@@ -16,7 +16,7 @@ begin
 		,StoryNameRaw
 		,StoryAuthorRaw
 		,StoryType
-		,ddShowId
+		,ShowId
 		,PriceRaw
     )
     select		PerformanceRangeStartDateTime

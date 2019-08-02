@@ -14,6 +14,7 @@ begin
         ,SocietyDisplaySortOrder	tinyint unsigned
         ,SocietyId					smallint unsigned
         ,SocietyNameRaw				varchar(150)		-- This would be a pretty boringly long society name
+        ,SocietyKey 				smallint unsigned
 	);
 
 	drop table if exists camdram_dw.extract_dim_society_free;
@@ -63,18 +64,31 @@ begin
 	drop table if exists camdram_dw.extract_fct_performances;
     create table camdram_dw.extract_fct_performances(
 		PerformanceRangeStartDateTime	datetime
+        ,PerformanceRangeStartDate		date generated always as (cast(PerformanceRangeStartDateTime as date))
 		,PerformanceRangeEndDate		date
-		,VenueId						smallint unsigned
+        ,PerformanceRangeUTCTime		time generated always as (cast(PerformanceRangeStartDateTime as time))
+		,PerformanceRangeUTCTimeKey		smallint unsigned
+        ,PerformanceRangeLocalTimeKey	smallint unsigned
+        ,VenueId						smallint unsigned
         ,VenueNameRaw					varchar(200)
+        ,VenueKey						smallint unsigned
         ,SocietyComboValueRaw			varchar(1000)
+        ,SocietyComboKey				smallint unsigned
         ,StoryNameRaw					varchar(255)
         ,StoryAuthorRaw					varchar(255)
         ,StoryType						varchar(20)
-        ,ddShowId						smallint unsigned
-        ,PriceRaw						varchar(200)
+        ,StoryKey						smallint unsigned
         
-        ,PerformanceRangeStartDate		date generated always as (cast(PerformanceRangeStartDateTime as date))
-        ,PerformanceRangeTime_GMT		time generated always as (cast(PerformanceRangeStartDateTime as time))
+        ,ShowId							smallint unsigned
+        
+        ,PerformanceUTCDateTimeStamp	datetime
+        ,PerformanceLocalDateTimeStamp	datetime
+        ,PriceRaw						varchar(200)
+        ,MinTicketPrice_GBP				decimal(5,2)
+        ,MaxTicketPrice_GBP				decimal(5,2)
+        ,CountOfCastRoles				tinyint unsigned
+        ,CountOfCrewRoles				tinyint unsigned
+        ,CountOfBandRoles				tinyint unsigned
     );
     
     drop table if exists camdram_dw.extract_fct_roles;
