@@ -20,6 +20,10 @@ At this point there's a bunch of defined objects but no actual data
 1. call run_extract_dims();		-- Populates the extract_dim tables, 0.3s. Hits the prod database.
 2. call run_extract_facts();	-- Populates extract_fct tables, 1s. Hits the prod database.
 
+	-- Rest is all isolated within the camdram_dw database
+    
+3. 
+
 */
 
 
@@ -74,11 +78,13 @@ from 	camdram_prod.acts_shows
 where 	category in ('0','1','2','3','4','5')
 ;
 
-select 	category, title, author, timestamp
+select 	category, title, author, timestamp, id, authorised
 from 	camdram_prod.acts_shows
-where 	category = '1'
+where 	category = '0'
 order by category
 ;
+select * from camdram_prod.acts_performances where sid = 4429;
+
 -- 1 seems to be comedy and should be gone now
 -- 2 musical - should all be gone now
 -- 3 opera - shouldn't be any more 3s now
@@ -179,8 +185,8 @@ where id in (10,2081,3899);
 
 SELECT * 
 FROM camdram_prod.acts_performances
-where sid is not null 
-and cast(start_at as char(20)) != '0000-00-00 00:00:00'
+where sid is  null 
+-- and cast(start_at as char(20)) = '0000-00-00 00:00:00'
 ;
 
 SELECT *, cast(start_at as char(20))
@@ -270,6 +276,41 @@ where 		PF.sid is not null
 select distinct authorised
 from camdram_prod.acts_shows;
 
+-- Diversion - can I get created by user?
+SELECT * 
+FROM camdram_prod.acts_access
+where type = 'show'
+-- and entity_id = 1216
+order by created_at desc
+-- order by entity_id asc, granted_by_id asc, user_id asc
+;
+
+select * from camdram_prod.acts_users where id = 421;
+
+
+SELECT entity_id, count(1)
+FROM camdram_prod.acts_access
+where type = 'show'
+group by entity_id
+order by count(1) desc
+;
+
+select * 
+from camdram_prod.acts_shows
+where id = 5025;
+
+select * 
+from camdram_prod.acts_access
+where type = 'show'
+and entity_id = 5025
+order by created_at desc
+;
+
+select * from camdram_prod.acts_users where id = 2743;
+-- A: not easily. Probably, but let's not worry for now. 
+
+
+
 
 /*
 	Now I have a complete working extract of data in camdram_dw.
@@ -300,5 +341,82 @@ from camdram_prod.acts_shows;
 -- and othertimes as harmonized or normalized values. 
 -- The latter does imply more rows though. 
 
+-- More thinking another day:
+/*
+Let's make an axiom: whilst we might USE this dataset to drive and identify cleaning,
+all cleanign will happen in the prod database. This DW should just reflect the prod DB. 
+That's where the value really lies. So I'm not going to have any processes that do clever matching of
+differently-spelt versions of same venue, etc, and feed it into this DW dimension build process. 
+We'd feed it into prod updates and then the data will be better in reload. 
+So venue_free and society_free are potentially still useful but NOT IN THE WAY I INITIALLY ENVISAGED.
+
+If that axiom holds, then we don't need to worry about lookup of keys against dims. Whatever is in the final 
+dim table is what we'll need to lookup. So the dims can be built with auto_increment keys. 
+
+
+For now, first, I want final dim tables, with the right set of columns and with an autoincrement key.
+Initial version of dim insert process will actually just insert the official ones plus some
+default rows. Then the fact lookup will lookup the official IDs and match anything with raw text
+values to the default. Simple and clean. 
+
+Later iterations of this code can improve on that if desired, of course. 
+*/
+
 select *
 from 	extract_dim_story;
+
+
+select * 
+from extract_fct_performances
+order by PerformanceRangeStartDate desc;
+
+select count(1)
+from extract_dim_venue_free;
+
+select VenueNameRaw
+from extract_dim_venue_free
+order by VenueNameRaw
+;
+
+select left(VenueNameRaw,10), count(distinct ddShowId)
+from extract_fct_performances
+group by left(VenueNameRaw,10)
+order by count(1) desc
+;
+
+select *
+from extract_fct_performances
+where VenueNameRaw like 'The Theatre%VA%'
+order by StoryNameRaw asc
+;
+
+-- Thinking that since the majority of analysis would be interested in
+-- just the standard venues (and socs) - pareto! - I probably don't need to worry
+-- about this stuff too much. 
+-- Think it might be better to just map any raw venue names to "Other Venue" or something
+-- for now and publish like that. Can always circule back and improve later. 
+-- Better to get something out than not at all. 
+
+
+
+select ShowId, count(distinct ParticipantId)
+from extract_fct_roles
+group by ShowId
+order by count(distinct ParticipantId) desc;
+
+
+select * from extract_dim_society_combo
+where SocietyKey is null
+;
+
+
+select * from camdram_dw.extract_dim_society_official;
+
+select * from camdram_dw.extract_fct_performances
+where SocietyComboValueRaw = '[10]';
+-- These 10s don't appear to be consistently the same thing, based on old emails
+-- I think they're a glitch for things that were meant to be various free-text societies.
+-- Now showing no society on Camdram front-end... 
+-- Probably map these to a different negative catchall. 
+
+select * from camdram_prod.acts_societies;
