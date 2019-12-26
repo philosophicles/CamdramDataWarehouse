@@ -21,11 +21,13 @@ begin
     ;
 	
     insert into 	camdram_dw.numbers(RowNo)
-	select 			thousands.RowNo * 1000 
+	select 			  tenks.RowNo * 10000
+					+ thousands.RowNo * 1000 
 					+ hundreds.RowNo * 100 
                     + tens.RowNo * 10 
                     + ones.RowNo * 1
-	from 			camdram_dw.numbers_small 	thousands
+	from 			camdram_dw.numbers_small 	tenks
+    cross join 		camdram_dw.numbers_small 	thousands
     cross join 		camdram_dw.numbers_small 	hundreds
     cross join 		camdram_dw.numbers_small 	tens
 	cross join 		camdram_dw.numbers_small 	ones
@@ -35,4 +37,4 @@ begin
 end @
 delimiter ;
 
--- call camdram_dw.setup_numbers();
+call camdram_dw.setup_numbers();

@@ -39,4 +39,4 @@ begin
 end @
 delimiter ;
 
--- call camdram_dw.setup_dim_time();
+call camdram_dw.setup_dim_time();

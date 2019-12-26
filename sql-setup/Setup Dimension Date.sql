@@ -57,7 +57,7 @@ begin
 	insert into camdram_dw.dim_date(DateValue)
 	select 		date_add('1914-01-01', interval RowNo day)
 	from 		camdram_dw.numbers
-	where 		date_add( '1914-01-01', interval RowNo day) between '1914-01-01' and '2040-01-01'
+	where 		date_add( '1914-01-01', interval RowNo day) between '1914-01-01' and '2049-12-31'
 	order by 	RowNo
     ;
     
@@ -73,4 +73,4 @@ begin
 end @
 delimiter ;
 
--- call camdram_dw.setup_dim_date();
+call camdram_dw.setup_dim_date();
