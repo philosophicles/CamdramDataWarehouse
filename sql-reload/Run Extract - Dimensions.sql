@@ -50,7 +50,7 @@ begin
     (
 		StoryNameRaw
         ,StoryAuthorRaw
-        ,StoryType
+        ,StoryTypeRaw
     )
     select 	StoryNameRaw
 			,StoryAuthorRaw

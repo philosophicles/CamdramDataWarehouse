@@ -33,7 +33,10 @@ begin
 	drop table if exists camdram_dw.extract_dim_story;
 	create table camdram_dw.extract_dim_story(
 		StoryNameRaw		varchar(255)
+        ,StoryName			varchar(255)
         ,StoryAuthorRaw		varchar(255)
+        ,StoryAuthor		varchar(255)
+        ,StoryTypeRaw		varchar(20)
         ,StoryType			varchar(20)
 	);
 
