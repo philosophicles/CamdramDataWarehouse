@@ -1,3 +1,5 @@
+-- CREATE SCHEMA `camdram_prod` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ;
+
 -- CREATE SCHEMA `camdram_dw` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs ;
 
 
@@ -22,7 +24,10 @@ At this point there's a bunch of defined objects but no actual data
 
 	-- Rest is all isolated within the camdram_dw database
     
-3. 
+3. Run dimensions: these should be able to be run in any order, independently
+	* Venue
+    * Society
+    ...
 
 */
 
@@ -85,12 +90,12 @@ order by category
 ;
 select * from camdram_prod.acts_performances where sid = 4429;
 
--- 1 seems to be comedy and should be gone now
--- 2 musical - should all be gone now
--- 3 opera - shouldn't be any more 3s now
+-- 1 seems to be comedy and should be gone now -- correct
+-- 2 musical - should all be gone now -- correct
+-- 3 opera - shouldn't be any more 3s now -- correct
 -- 4 maps to drama in front end but is that right, only three 4s...they are all dance
-	-- there should be no 4s left in an updated database dump
--- 5 should also be gone
+	-- there should be no 4s left in an updated database dump - correct they have gone. 
+-- 5 should also be gone -- correct. 
 
 
 select 		distinct 
@@ -317,6 +322,7 @@ select * from camdram_prod.acts_users where id = 2743;
     Next steps:
 		1. Process dims into a final form: until this is done, with a suitable Surrogate Key, 
 			I can't put that Surrogate Key on the facts.
+            AS OF DEC 2019, I have society, venue, and story done. 
 		2. Process facts into a final, surrogates-only, form. 
 			This could either be a straight insert select where the query 
             does a bunch of joins to dimensional lookups.
@@ -412,11 +418,21 @@ where SocietyKey is null
 
 select * from camdram_dw.extract_dim_society_official;
 
-select * from camdram_dw.extract_fct_performances
-where SocietyComboValueRaw = '[10]';
+select ShowId, PerformanceRangeStartDateTime, StoryNameRaw, StoryAuthorRaw, VenueNameRaw
+from camdram_dw.extract_fct_performances
+where SocietyComboValueRaw = '[10]'
+order by PerformanceRangeStartDateTime
+;
 -- These 10s don't appear to be consistently the same thing, based on old emails
 -- I think they're a glitch for things that were meant to be various free-text societies.
 -- Now showing no society on Camdram front-end... 
--- Probably map these to a different negative catchall. 
+-- Have mapped these to a different negative catchall. And fixed in live DB - should disappear next extract.
+	-- Fixed = resaved, which wipes the bad data. But in many cases I was able to fill in a real soc based on
+    -- description / context. Early ones mostly CADS, later ones other stuff. 
 
 select * from camdram_prod.acts_societies;
+
+
+select *
+from 		camdram_dw.extract_dim_society_combo
+where SocietyKey is null;
