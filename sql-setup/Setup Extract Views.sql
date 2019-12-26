@@ -68,9 +68,7 @@ begin
 			`camdram_prod`.`acts_societies`.`shortname` AS `SocietyNameShort`,
 			`camdram_prod`.`acts_societies`.`college` AS `SocietyAffiliatedCollege`
 		FROM
-			`camdram_prod`.`acts_societies`
-		WHERE
-			(`camdram_prod`.`acts_societies`.`type` = 0);
+			`camdram_prod`.`acts_societies`;
 
 	drop view if exists `camdram_dw`.`extractv_dim_story`;
 	CREATE VIEW `camdram_dw`.`extractv_dim_story` AS
@@ -107,7 +105,7 @@ begin
 		FROM
 			`camdram_prod`.`acts_performances`
 		WHERE
-			(NULLIF(`camdram_prod`.`acts_performances`.`venid`,
+			(NULLIF(`camdram_prod`.`acts_performances`.`venue_id`,
 					0) IS NULL)
 		ORDER BY LENGTH(`camdram_prod`.`acts_performances`.`venue`);
 
@@ -122,9 +120,7 @@ begin
 			cast(round(latitude,5) as decimal(7,5)) 	AS `VenueLatitude`,
 			cast(round(longitude,5) as decimal(8,5)) AS `VenueLongitude`
 		FROM
-			`camdram_prod`.`acts_societies`
-		WHERE
-			(`camdram_prod`.`acts_societies`.`type` = 1);
+			`camdram_prod`.`acts_venues`;
 
 	drop view if exists camdram_dw.extractv_fct_performances;
     create view camdram_dw.extractv_fct_performances as
@@ -151,8 +147,8 @@ begin
                         else PF.repeat_until
 					 end 											as PerformanceRangeEndDate
 					
-					,PF.venid										as VenueId
-					,case when PF.venid is null then PF.venue end	as VenueNameRaw
+					,PF.venue_id										as VenueId
+					,case when PF.venue_id is null then PF.venue end as VenueNameRaw
 					,SW.socs_list									as SocietyComboValueRaw
 					
 					,SW.title										as StoryNameRaw
