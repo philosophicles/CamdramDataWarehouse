@@ -20,6 +20,8 @@ select 'acts_shows', count(1) from camdram_prod.acts_shows
 union all
 select 'acts_societies', count(1) from camdram_prod.acts_societies
 union all 
+select 'acts_venues', count(1) from camdram_prod.acts_venues
+union all
 select 'extract_fct_performances', count(1) from camdram_dw.extract_fct_performances
 union all
 select 'extract_fct_roles', count(1) from camdram_dw.extract_fct_roles
