@@ -1,4 +1,4 @@
--- CREATE SCHEMA `camdram_prod` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ;
+-- CREATE SCHEMA `camdram_prod DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ;
 
 -- CREATE SCHEMA `camdram_dw` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs ;
 
@@ -25,8 +25,15 @@ At this point there's a bunch of defined objects but no actual data
 	-- Rest is all isolated within the camdram_dw database
     
 3. Run dimensions: these should be able to be run in any order, independently
+	(and perhaps we'd refresh on different timescales)
 	* Venue
-    * Society
+    * Society (incl. society combo table - must reload at same time)
+    * Story
+    
+4. Run facts: depends on dimensions being up to date first
+	(not aiming to handle late-arriving dimensions for now). 
+    * Performances
+    
     ...
 
 */
@@ -436,3 +443,156 @@ select * from camdram_prod.acts_societies;
 select *
 from 		camdram_dw.extract_dim_society_combo
 where SocietyKey is null;
+
+
+
+select *
+from 		camdram_dw.extract_fct_performances		FA
+;
+
+
+select count(1) from camdram_dw.dim_date;
+
+-- Working out the correct breeding of rows to turn the extract fact into final fact
+-- Convert from row per performance RUN to row per performance
+select 		DA.DateValue
+            ,timestamp(DA.DateValue, PerformanceTime)	as PerformanceTimestamp
+            
+			,FA.*
+            
+from 		camdram_dw.extract_fct_performances		FA
+inner join 	camdram_dw.dim_date						DA	on DA.DateValue between FA.PerformanceRangeStartDate
+																		and 	FA.PerformanceRangeEndDate
+-- where 		DA.AcademicYearNum = 2018
+where FA.ShowId = 6648
+order by 	FA.ShowId asc
+			,PerformanceTimestamp asc
+;
+
+select *
+from camdram_prod.acts_performances
+where sid = 6648;
+
+
+select *
+from 		camdram_dw.extract_fct_performances		FA
+where 		VenueKey is null
+or 			SocietyComboKey is null
+or 			StoryKey is null
+;
+
+
+-- This works, both locally and on antigone. 
+select convert_tz('2019-07-01 18:45:00', '+00:00', 'Europe/London') as summerADCshow
+		,convert_tz('2019-12-01 19:45:00', '+00:00', 'Europe/London') as winterADCshow;
+        
+-- BUT my explorations have taught me that mysql sucks at datetimes. 
+-- Are there going to be any problems caused by doing this "fix" at this point in the process?
+
+
+
+select 		PerformanceTime
+			,sec_to_time(300*floor((time_to_sec(PerformanceTime))/300))
+from 		camdram_dw.extract_fct_performances		FA
+where 		PerformanceTimeKey is null
+;
+
+select 	PerformanceTime
+from 		camdram_dw.extract_fct_performances		FA
+where 		second(PerformanceTime) <> 0
+or 			minute(PerformanceTime) % 5 <> 0
+;
+
+
+
+
+
+select 	distinct SocietyComboValueRaw, ShowId
+from 		camdram_dw.extract_fct_performances		FA
+where 		SocietyComboKey is null
+;
+
+select json_length(socs_list)
+from camdram_prod.acts_shows S
+where socs_list = '[]'
+order by id desc
+;
+
+
+
+
+
+
+select 		*
+from 		camdram_dw.extract_fct_performances		FA
+-- where 		SocietyComboKey is null
+;
+select * 
+from camdram_dw.extract_dim_story
+where StoryTypeRaw = '' or StoryTypeRaw is null
+;
+
+select * from camdram_dw.dim_story;
+
+
+select distinct StoryType
+from camdram_dw.extract_dim_story
+;
+
+update 		camdram_dw.extract_fct_performances		FA
+    inner join 	camdram_dw.extract_dim_story			E	on FA.StoryNameRaw = E.StoryNameRaw
+															and coalesce(FA.StoryAuthorRaw,'') = coalesce(E.StoryAuthorRaw,'')
+                                                            and FA.StoryType = E.StoryTypeRaw
+	inner join 	camdram_dw.dim_story					S	on E.StoryName = S.StoryName
+															and E.StoryAuthor = S.StoryAuthor
+                                                            and E.StoryType = S.StoryType
+    set 		FA.StoryKey = S.StoryKey
+    where 		FA.StoryKey is null
+    ;
+
+update 		camdram_dw.extract_dim_story			E
+inner join 	camdram_dw.dim_story					S	on E.StoryName = S.StoryName
+														and E.StoryAuthor = S.StoryAuthor
+														and E.StoryType = S.StoryType
+set 		E.StoryKey = S.StoryKey
+where 		E.StoryKey is null
+;
+
+
+
+select 		*
+from 		camdram_dw.extract_fct_performances		FA
+where 		StoryKey is null
+;
+
+select *
+from camdram_dw.extract_dim_story
+where StoryNameRaw = 'SALOME'
+;
+
+select *
+from camdram_dw.extractv_dim_story
+where StoryNameRaw = 'SALOME'
+;
+select *	-- one is coming out title cased, the other capitalized...?!?!?!
+from camdram_dw.extractv_fct_performances
+where StoryNameRaw = 'SALOME'
+;
+
+		select	distinct
+				title 	collate utf8mb4_0900_as_cs 	as StoryNameRaw
+				,author collate utf8mb4_0900_as_cs 	as StoryAuthorRaw
+				,nullif(category,'') 				as StoryType
+		from	camdram_prod.acts_shows
+        where 	authorised = 1
+		;
+
+
+
+select 	ShowId
+		,ParticipantType
+        ,
+from 	camdram_dw.extract_fct_roles
+;
+
+
