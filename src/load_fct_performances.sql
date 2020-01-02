@@ -1,7 +1,7 @@
 
-drop procedure if exists camdram_dw.run_fct_performances;
+drop procedure if exists load_fct_performances;
 delimiter @
-create procedure camdram_dw.run_fct_performances()
+create procedure load_fct_performances()
 begin
    
     
@@ -28,15 +28,15 @@ begin
         */
     
     -- Exact matches first
-	update 		camdram_dw.extract_fct_performances		FA
-    inner join 	camdram_dw.dim_time						T	on FA.PerformanceTime = T.TimeValue
+	update 		extract_fct_performances		FA
+    inner join 	dim_time						T	on FA.PerformanceTime = T.TimeValue
     set 		FA.PerformanceTimeKey = T.TimeKey
     where 		FA.PerformanceTimeKey is null
     ;
     
     -- Then remaining rounded matches (ugly join, but very few rows)
-	update 		camdram_dw.extract_fct_performances		FA
-    inner join 	camdram_dw.dim_time						T	on sec_to_time(300*floor((time_to_sec(FA.PerformanceTime))/300)) = T.TimeValue
+	update 		extract_fct_performances		FA
+    inner join 	dim_time						T	on sec_to_time(300*floor((time_to_sec(FA.PerformanceTime))/300)) = T.TimeValue
     set 		FA.PerformanceTimeKey = T.TimeKey
     where 		FA.PerformanceTimeKey is null
     ;
@@ -44,15 +44,15 @@ begin
     /*** VenueKey ***/
     
     -- For "real" venues
-    update 		camdram_dw.extract_fct_performances		FA
-    inner join 	camdram_dw.dim_venue					V	on FA.VenueId = V.VenueId
+    update 		extract_fct_performances		FA
+    inner join 	dim_venue					V	on FA.VenueId = V.VenueId
     set 		FA.VenueKey = V.VenueKey
     where 		FA.VenueKey is null
     ;
     
     -- For freetext venues
-    update 		camdram_dw.extract_fct_performances		FA
-    inner join 	camdram_dw.dim_venue					V	on -1 = V.VenueId	-- -1 = Freetext venue
+    update 		extract_fct_performances		FA
+    inner join 	dim_venue					V	on -1 = V.VenueId	-- -1 = Freetext venue
     set 		FA.VenueKey = V.VenueKey
     where 		FA.VenueKey is null
     ;
@@ -64,9 +64,9 @@ begin
 		select 	distinct
 				SocietyComboValueRaw
                 ,SocietyComboKey
-		from 	camdram_dw.extract_dim_society_combo
+		from 	extract_dim_society_combo
     )
-    update 		camdram_dw.extract_fct_performances		FA
+    update 		extract_fct_performances		FA
     inner join 	society_combo							S	on FA.SocietyComboValueRaw = S.SocietyComboValueRaw
     set 		FA.SocietyComboKey = S.SocietyComboKey
     where 		FA.SocietyComboKey is null
@@ -75,8 +75,8 @@ begin
     /*** Look up StoryKey ***/
     -- This is slow, about 15s; I don't know if there's anything that 
     -- can be done in mysql to improve that (problem is nested-loop join on two big tables).
-    update 		camdram_dw.extract_fct_performances		FA
-    inner join 	camdram_dw.extract_dim_story			E	on FA.StoryNameRaw = E.StoryNameRaw
+    update 		extract_fct_performances		FA
+    inner join 	extract_dim_story			E	on FA.StoryNameRaw = E.StoryNameRaw
 															and coalesce(FA.StoryAuthorRaw,'') = coalesce(E.StoryAuthorRaw,'')
                                                             and FA.StoryType = E.StoryTypeRaw
     set 		FA.StoryKey = E.StoryKey
@@ -108,9 +108,9 @@ begin
     
     
     -- Finally, trunc and reload the final fact table
-    truncate table camdram_dw.fct_performances;
+    truncate table fct_performances;
     
-    insert into camdram_dw.fct_performances
+    insert into fct_performances
     (
 		PerformanceDateKey
         ,PerformanceUTCTimeKey
@@ -143,12 +143,12 @@ begin
 				,FA.CountOfCrewRoles
 				,FA.CountOfBandRoles
     
-    from 		camdram_dw.extract_fct_performances		FA
-    inner join 	camdram_dw.dim_date						DA	on DA.DateValue between FA.PerformanceRangeStartDate
+    from 		extract_fct_performances		FA
+    inner join 	dim_date						DA	on DA.DateValue between FA.PerformanceRangeStartDate
 																			and 	FA.PerformanceRangeEndDate
     ;
 
 end @
 delimiter ;
 
-call camdram_dw.run_fct_performances();
+-- call load_fct_performances();

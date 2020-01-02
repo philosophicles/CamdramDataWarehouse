@@ -1,41 +1,49 @@
 # CamdramDataWarehouse
 
-Totally work in progress currently; not in a useful state yet.
+An ETL process to convert Camdram data into a dataset that is suitably anonymized and desensitized for public analysis, and structured according to data warehousing conventions (star schema, aka Kimball method).
 
-An attempt at an ETL process to convert Camdram data into a dataset that is suitably anonymized and desensitized for public analysis, and structured according to data warehousing conventions (star schema, aka Kimball method).
+Still work-in-progress.
 
 The Kimball method for data warehousing aligns closely with what data science now calls "tidy data"; this is mostly different industries' terminology for the same thing.
 
 The result of this project should be easy to conduct data visualization or analysis on.
 
-The project is pure SQL, that should (hopefully) execute on recent versions of MariaDB or MySQL. I haven't tested against other DBs yet but it's as close to ANSI SQL as possible.
+The project is pure SQL, that should (hopefully) execute on recent versions of MariaDB or MySQL.
 
 It's designed to run against an existing copy of the Camdram website database on the same server (separate schema); you have to be able to make a copy of that for yourself.
 
 The project includes declarations for the data structures, and all logic is contained within stored procedures. Eventually, the top level stored proc(s) could be called by a simple cron job or similar, on whatever data refresh schedule is desired.
 
-## Overview of stored procedures
+## Installation
 
-### Setup
+Edit the first few lines of `install.sql` to specify a mysql schema/database name that will be used for the data warehouse. The stated schema will be dropped and recreated if it already existed; choose your name wisely.
 
-These are procedures that should be run once when creating this project against an empty database schema, or when recreating during development. However, these procedures don't need to be rerun simply to refresh updated live website data into the data warehouse.
+The codebase assumes that the camdram website data is in a schema called `camdram_prod`.
 
-1. CREATE SCHEMA `camdram_dw` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs ;
-		* Case Sensitive collation is potentially important...
-2. call setup_numbers();				-- No dependencies
-3. call setup_extract_tables();		-- No dependencies
-4. call setup_extract_views();		-- Depends on numbers
-5. call setup_dim_date();				-- Depends on numbers and some views
-6. call setup_dim_time();				-- Depends on numbers
+From a shell prompt, starting in the top-level directory of this project, connect to your running `mysql` instance:
 
-At this point there's a bunch of defined objects but no actual data.
+    $ mysql -u SomeUser -p
 
-### Regular reload process
+From the mysql prompt, run the installation script:
 
-1. call run_extract_dims();		-- Populates the extract_dim tables, 0.3s. Hits the prod database.
-2. call run_extract_facts();	-- Populates extract_fct tables, 1s. Hits the prod database.
+    mysql> source install.sql;
 
-From here on, everything should be isolated within the camdram_dw database
+You should see a stream of "Query OK..." messages. When they're done and you're back at the mysql prompt, installation is done.
 
-3. TBC
+## Load or reload data
 
+From a shell prompt in the top-level directory:
+
+    $ mysql -u SomeUser -p camdram_dw < reload.sql
+
+Replace `camdram_dw` with the schema in which everything was installed.
+
+This will do a full reload, calling in turn a number of stored procedures that:
+
+1. Extract a copy of _relevant_ data from the production camdram schema, into the camdram_dw schema.
+2. Process the data warehouse dimensions: society, venue, etc.
+3. Process the facts: performances, etc.
+
+Pre-existing data in the camdram_dw schema is completely removed / overwritten each time a reload takes place.
+
+The reload process may take a couple of minutes.

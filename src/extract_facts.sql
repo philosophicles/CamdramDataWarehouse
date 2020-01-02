@@ -1,12 +1,11 @@
 
-
-drop procedure if exists camdram_dw.run_extract_facts;
+drop procedure if exists extract_facts;
 delimiter @
-create procedure camdram_dw.run_extract_facts()
+create procedure extract_facts()
 begin
 	
-    truncate table camdram_dw.extract_fct_performances;
-    insert into camdram_dw.extract_fct_performances
+    truncate table extract_fct_performances;
+    insert into extract_fct_performances
     (
 		PerformanceRangeStartDateTime
 		,PerformanceRangeEndDate
@@ -29,11 +28,11 @@ begin
 				,StoryType
 				,ddShowId
 				,PriceRaw
-    from 		camdram_dw.extractv_fct_performances
+    from 		extractv_fct_performances
     ;
     
-    truncate table camdram_dw.extract_fct_roles;
-    insert into camdram_dw.extract_fct_roles
+    truncate table extract_fct_roles;
+    insert into extract_fct_roles
     (
 		ShowId
 		,ParticipantId
@@ -46,11 +45,11 @@ begin
                 ,ParticipantType
                 ,ParticipantRoleRaw
                 ,RoleDisplayOrder
-    from 		camdram_dw.extractv_fct_roles
+    from 		extractv_fct_roles
     ;
     
 end @
 delimiter ;
 
-call camdram_dw.run_extract_facts();
+-- call extract_facts();
 

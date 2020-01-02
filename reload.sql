@@ -1,0 +1,1 @@
+call run_all();

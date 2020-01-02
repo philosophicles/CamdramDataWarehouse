@@ -1,12 +1,11 @@
 
-
-drop procedure if exists camdram_dw.run_extract_dims;
+drop procedure if exists extract_dimensions;
 delimiter @
-create procedure camdram_dw.run_extract_dims()
+create procedure extract_dimensions()
 begin
 
-	truncate table camdram_dw.extract_dim_society_combo;
-	insert into camdram_dw.extract_dim_society_combo
+	truncate table extract_dim_society_combo;
+	insert into extract_dim_society_combo
     (	SocietyComboValueRaw
 		,SocietyComboKey
 		,SocietyDisplaySortOrder
@@ -18,20 +17,20 @@ begin
             ,SocietyDisplaySortOrder
             ,SocietyId
             ,SocietyNameRaw
-    from 	camdram_dw.extractv_dim_society_combo
+    from 	extractv_dim_society_combo
     ;
     
-    truncate table camdram_dw.extract_dim_society_free;
-    insert into camdram_dw.extract_dim_society_free
+    truncate table extract_dim_society_free;
+    insert into extract_dim_society_free
     (
 		SocietyNameRaw
     )
     select 	SocietyNameRaw
-    from 	camdram_dw.extractv_dim_society_free
+    from 	extractv_dim_society_free
     ;
     
-    truncate table camdram_dw.extract_dim_society_official;
-    insert into camdram_dw.extract_dim_society_official
+    truncate table extract_dim_society_official;
+    insert into extract_dim_society_official
     (
 		SocietyId
 		,SocietyName
@@ -42,11 +41,11 @@ begin
 			,SocietyName
 			,SocietyNameShort
 			,SocietyAffiliatedCollege
-    from 	camdram_dw.extractv_dim_society_official
+    from 	extractv_dim_society_official
     ;
     
-    truncate table camdram_dw.extract_dim_story;
-    insert into camdram_dw.extract_dim_story
+    truncate table extract_dim_story;
+    insert into extract_dim_story
     (
 		StoryNameRaw
         ,StoryAuthorRaw
@@ -55,11 +54,11 @@ begin
     select 	StoryNameRaw
 			,StoryAuthorRaw
 			,StoryType
-    from 	camdram_dw.extractv_dim_story
+    from 	extractv_dim_story
     ;
     
-    truncate table camdram_dw.extract_dim_user;
-    insert into camdram_dw.extract_dim_user
+    truncate table extract_dim_user;
+    insert into extract_dim_user
     (
 		UserId
         ,UserRegisteredDateValue
@@ -70,20 +69,20 @@ begin
 			,UserRegisteredDateValue
 			,UserLatestLoginDateValue
 			,UserEmailDomain
-    from 	camdram_dw.extractv_dim_user
+    from 	extractv_dim_user
     ;
     
-    truncate table camdram_dw.extract_dim_venue_free;
-    insert into camdram_dw.extract_dim_venue_free
+    truncate table extract_dim_venue_free;
+    insert into extract_dim_venue_free
     (
 		VenueNameRaw
     )
     select 	VenueNameRaw
-    from 	camdram_dw.extractv_dim_venue_free
+    from 	extractv_dim_venue_free
     ;
     
-    truncate table camdram_dw.extract_dim_venue_official;
-    insert into camdram_dw.extract_dim_venue_official
+    truncate table extract_dim_venue_official;
+    insert into extract_dim_venue_official
     (
 		VenueId
 		,VenueName
@@ -100,10 +99,10 @@ begin
 			,VenueAddressRaw
 			,VenueLatitude
 			,VenueLongitude
-    from 	camdram_dw.extractv_dim_venue_official
+    from 	extractv_dim_venue_official
     ;
 
 end @
 delimiter ;
 
-call camdram_dw.run_extract_dims();
+-- call extract_dimensions();

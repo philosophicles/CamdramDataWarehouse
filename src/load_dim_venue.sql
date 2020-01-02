@@ -1,16 +1,16 @@
 
-drop procedure if exists camdram_dw.run_dim_venue;
+drop procedure if exists load_dim_venue;
 delimiter @
-create procedure camdram_dw.run_dim_venue()
+create procedure load_dim_venue()
 begin
     
     -- Potential addition: Venue's address (is in extract table)
     -- Would this be useful?
     
-    truncate table camdram_dw.dim_venue;
+    truncate table dim_venue;
     
     -- Defaults
-    insert into camdram_dw.dim_venue
+    insert into dim_venue
     (
 		VenueId
 		,VenueName
@@ -24,7 +24,7 @@ begin
 																	-- to be obviously "fake". 
     ;
     
-    insert into camdram_dw.dim_venue
+    insert into dim_venue
     (
 		VenueId
 		,VenueName
@@ -39,10 +39,10 @@ begin
 			,coalesce(VenueAffiliatedCollege, 'None')
 			,VenueLatitude
 			,VenueLongitude
-    from 	camdram_dw.extract_dim_venue_official
+    from 	extract_dim_venue_official
     ;
 
 end @
 delimiter ;
 
-call camdram_dw.run_dim_venue();
+-- call load_dim_venue();
