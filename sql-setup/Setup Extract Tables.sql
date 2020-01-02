@@ -38,6 +38,7 @@ begin
         ,StoryAuthor		varchar(255)
         ,StoryTypeRaw		varchar(20)
         ,StoryType			varchar(20)
+        ,StoryKey			smallint unsigned
 	);
 
 	drop table if exists camdram_dw.extract_dim_user;
@@ -69,9 +70,8 @@ begin
 		PerformanceRangeStartDateTime	datetime
         ,PerformanceRangeStartDate		date generated always as (cast(PerformanceRangeStartDateTime as date))
 		,PerformanceRangeEndDate		date
-        ,PerformanceRangeUTCTime		time generated always as (cast(PerformanceRangeStartDateTime as time))
-		,PerformanceRangeUTCTimeKey		smallint unsigned
-        ,PerformanceRangeLocalTimeKey	smallint unsigned
+        ,PerformanceTime				time generated always as (cast(PerformanceRangeStartDateTime as time))
+        ,PerformanceTimeKey				smallint unsigned
         ,VenueId						smallint unsigned
         ,VenueNameRaw					varchar(200)
         ,VenueKey						smallint unsigned
@@ -84,14 +84,12 @@ begin
         
         ,ShowId							smallint unsigned
         
-        ,PerformanceUTCDateTimeStamp	datetime
-        ,PerformanceLocalDateTimeStamp	datetime
         ,PriceRaw						varchar(200)
         ,MinTicketPrice_GBP				decimal(5,2)
         ,MaxTicketPrice_GBP				decimal(5,2)
-        ,CountOfCastRoles				tinyint unsigned
-        ,CountOfCrewRoles				tinyint unsigned
-        ,CountOfBandRoles				tinyint unsigned
+        ,CountOfCast					tinyint unsigned
+        ,CountOfCrew					tinyint unsigned
+        ,CountOfBand					tinyint unsigned
     );
     
     drop table if exists camdram_dw.extract_fct_roles;

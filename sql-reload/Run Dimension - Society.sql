@@ -23,6 +23,7 @@ begin
     values 
      (-1, 'Freetext Society', 'Freetext', 'N/A')
 	,(-2, 'Invalid Society Id', 'Invalid', 'N/A')	-- see below for reason
+    ,(-3, 'No Society Specified', 'None', 'N/A')
     ;
     
     insert into camdram_dw.dim_society
@@ -37,13 +38,22 @@ begin
 			,SocietyNameShort
 			,ifnull(SocietyAffiliatedCollege, 'N/A')
     from 	camdram_dw.extract_dim_society_official
-    ;   
+    ;
+    
+    -- One special case is where there is no SocietyId or NameRaw - for shows with
+    -- no specified society
+    update 		camdram_dw.extract_dim_society_combo	SC
+    inner join 	camdram_dw.dim_society					S	on -3 = S.SocietyId
+    set 		SC.SocietyKey = S.SocietyKey
+    where 		SC.SocietyComboValueRaw = '[]'
+    and 		SC.SocietyKey is null
+    ;
     
     -- Apply surrogate key for "real" societies
     update 		camdram_dw.extract_dim_society_combo	SC
     inner join 	camdram_dw.dim_society					S	on SC.SocietyId = S.SocietyId
     set 		SC.SocietyKey = S.SocietyKey
-    where 		SC.SocietyId is not null
+    where 		SC.SocietyId is not null	-- strictly superfluous, here for clarity
     and 		SC.SocietyKey is null
     ;
     
@@ -62,6 +72,7 @@ begin
     inner join 	camdram_dw.dim_society					S	on -1 = S.SocietyId
     set 		SC.SocietyKey = S.SocietyKey
     where 		SC.SocietyId is null
+    and 		SC.SocietyNameRaw is not null
     and 		SC.SocietyKey is null
     ;
     

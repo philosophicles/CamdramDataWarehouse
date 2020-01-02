@@ -66,6 +66,17 @@ begin
     order by 	StoryAuthor
 				,StoryName
     ;
+    
+    /*** Retroactively apply generated StoryKey ***/
+		-- This is for performance of the eventual Fact table processing, 
+        -- since we appear to be limited to nested loops in mysql/mariadb :-(.
+        -- This is still quite slow!
+    update 		camdram_dw.extract_dim_story			E
+	inner join 	camdram_dw.dim_story					S	on E.StoryName = S.StoryName
+															and E.StoryAuthor = S.StoryAuthor
+                                                            and E.StoryType = S.StoryType
+    set 		E.StoryKey = S.StoryKey
+    ;
 
 end @
 delimiter ;

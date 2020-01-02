@@ -20,13 +20,21 @@ begin
 	drop view if exists `camdram_dw`.`extractv_dim_society_combo`;
 	CREATE VIEW `camdram_dw`.`extractv_dim_society_combo` AS 
 		with `cte` as (
-			select 	distinct `S`.`socs_list` AS `SocietyComboValueRaw`,dense_rank() OVER (ORDER BY `S`.`socs_list` )  AS `SocietyComboKey`,(`N`.`RowNo` + 1) AS `SocietyDisplaySortOrder`,json_extract(`S`.`socs_list`,concat('$[',`N`.`RowNo`,']')) AS `SocietyIdOrName` 
+			select 	distinct `S`.`socs_list` AS `SocietyComboValueRaw`
+					,1+dense_rank() OVER (ORDER BY `S`.`socs_list` )  AS `SocietyComboKey`
+                    ,(`N`.`RowNo` + 1) AS `SocietyDisplaySortOrder`
+                    ,json_extract(`S`.`socs_list`,concat('$[',`N`.`RowNo`,']')) AS `SocietyIdOrName` 
 			from 	`camdram_prod`.`acts_shows` `S` 
 			join 	`camdram_dw`.`numbers` 		`N` 	on json_length(`S`.`socs_list`) > `N`.`RowNo`
 			where 	`N`.`RowNo` between 0 and (	select max(json_length(`camdram_prod`.`acts_shows`.`socs_list`)) - 1 
 												from `camdram_prod`.`acts_shows`
 											  )
 			and 	`S`.authorised = 1
+            union all
+            -- Empty JSON list (for shows with no societies) has len 0 so fails 
+            -- the len > RowNo join condition above. It's a very special case so
+            -- just manually re-add it like this:
+            select	'[]', 1, 1, null
 			) 
 		SELECT 
 			`cte`.`SocietyComboValueRaw` AS `SocietyComboValueRaw`,
@@ -72,14 +80,12 @@ begin
 
 	drop view if exists `camdram_dw`.`extractv_dim_story`;
 	CREATE VIEW `camdram_dw`.`extractv_dim_story` AS
-		SELECT DISTINCT
-			`camdram_prod`.`acts_shows`.`title` AS `StoryNameRaw`,
-			`camdram_prod`.`acts_shows`.`author` AS `StoryAuthorRaw`,
-			NULLIF(`camdram_prod`.`acts_shows`.`category`,
-					'') AS `StoryType`
-		FROM
-			`camdram_prod`.`acts_shows`
-        where authorised = 1    
+		select	distinct
+				title 	collate utf8mb4_0900_as_cs 	as StoryNameRaw
+				,author collate utf8mb4_0900_as_cs 	as StoryAuthorRaw
+				,nullif(category,'') 				as StoryType
+		from	camdram_prod.acts_shows
+        where 	authorised = 1
 		;
 
 	drop view if exists `camdram_dw`.`extractv_dim_user`;
@@ -127,11 +133,25 @@ begin
 		select 		
 					/* 	Avoid a weird DQ problem affecting a very few rows.
 						These will also be fixed in prod data, but this helps
-						in case it happens again.
+						avoid errors, in case it happens again.
                     */
                     case 	
 						when cast(PF.start_at as char(20)) != '0000-00-00 00:00:00'
-						then PF.start_at
+                        /* start_at appears to be adjusted backwards during BST, 
+                           e.g. summertime ADC mainshows have start_at time of 18:45. 
+                           AFAICT for good reason (limitations of mysql datetimes).
+                           So this would be effectively storing UTC, if all
+                           shows took place in the UK (which they don't!). But that part
+                           doesn't matter because we're not actually interested in relative TZs
+                           around the world. (We don't care that a 7pm show in Japan is
+                           actually starting at 4am UK time, or whatever.)
+                           
+                           So, I _think_ it's appropriate at this point to convert back
+                           to the time as viewed on Camdram front-end (e.g. 19:45 in the summer)
+                           so our Time dimension "just works". I do have a nagging suspicion
+                           that this might yet surprise me, though...
+                        */
+						then convert_tz(PF.start_at, '+00:00', 'Europe/London')
 					end 											as PerformanceRangeStartDateTime
                     
                     /*	Another weird DQ problem with dates having 00 as day part. 

@@ -46,22 +46,20 @@ begin
 	drop table if exists camdram_dw.fct_performances;
     create table camdram_dw.fct_performances(
 		PerformanceDateKey				mediumint unsigned not null
-		,PerformanceUTCTimeKey			smallint unsigned not null
-        ,PerformanceLocalTimeKey		smallint unsigned not null
+		,PerformanceTimeKey				smallint unsigned not null
         ,VenueKey						smallint unsigned not null
         ,SocietyComboKey				smallint unsigned not null
         ,StoryKey						smallint unsigned not null
         ,ShowId							smallint unsigned not null
-        ,PerformanceUTCDateTimeStamp	datetime not null
-        ,PerformanceLocalDateTimeStamp	datetime not null
+        ,PerformanceDateTimeStamp		datetime not null
         ,MinTicketPrice_GBP				decimal(5,2)
         ,MaxTicketPrice_GBP				decimal(5,2)
-        ,CountOfCastRoles				tinyint unsigned
-        ,CountOfCrewRoles				tinyint unsigned
-        ,CountOfBandRoles				tinyint unsigned
+        ,CountOfCast					tinyint unsigned
+        ,CountOfCrew					tinyint unsigned
+        ,CountOfBand					tinyint unsigned
         ,constraint pk_fct_performances primary key (
 			PerformanceDateKey
-            ,PerformanceUTCTimeKey
+            ,PerformanceTimeKey
             ,VenueKey
             ,ShowId
             )
