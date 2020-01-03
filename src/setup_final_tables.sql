@@ -49,9 +49,9 @@ create table fct_performances(
 	,PerformanceDateTimeStamp		datetime not null
 	,MinTicketPrice_GBP				decimal(5,2)
 	,MaxTicketPrice_GBP				decimal(5,2)
-	,CountOfCast					tinyint unsigned
-	,CountOfCrew					tinyint unsigned
-	,CountOfBand					tinyint unsigned
+	,CountOfCast					tinyint unsigned not null default 0
+	,CountOfCrew					tinyint unsigned not null default 0
+	,CountOfBand					tinyint unsigned not null default 0
 	,constraint pk_fct_performances primary key (
 		PerformanceDateKey
 		,PerformanceTimeKey

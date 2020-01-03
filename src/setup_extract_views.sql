@@ -12,37 +12,45 @@ CREATE VIEW `extractv_dim_date_terms` AS
 	FROM
 		`camdram_prod`.`acts_time_periods`;
 
-drop view if exists `extractv_dim_society_combo`;
-CREATE VIEW `extractv_dim_society_combo` AS 
-	with `cte` as (
-		select 	distinct `S`.`socs_list` AS `SocietyComboValueRaw`
-				,1+dense_rank() OVER (ORDER BY `S`.`socs_list` )  AS `SocietyComboKey`
-				,(`N`.`RowNo` + 1) AS `SocietyDisplaySortOrder`
-				,json_extract(`S`.`socs_list`,concat('$[',`N`.`RowNo`,']')) AS `SocietyIdOrName` 
-		from 	`camdram_prod`.`acts_shows` `S` 
-		join 	`numbers` 		`N` 	on json_length(`S`.`socs_list`) > `N`.`RowNo`
-		where 	`N`.`RowNo` between 0 and (	select max(json_length(`camdram_prod`.`acts_shows`.`socs_list`)) - 1 
-											from `camdram_prod`.`acts_shows`
-										  )
-		and 	`S`.authorised = 1
+drop view if exists extractv_dim_society_combo;
+create view extractv_dim_society_combo as
+	with cteSocs as (
+		select	distinct 
+				-- Fix a DQ problem with "null" in the JSON list (also fixed in prod - 2 shows)
+				replace(replace(socs_list, ',null', ''), '[null]', '[]')	as socs_list
+        from 	camdram_prod.acts_shows
+        where 	authorised = 1
+    )
+	,cte as (
+		select 	distinct 
+				S.socs_list 										as SocietyComboValueRaw
+				,1+dense_rank() over (order by S.socs_list )  		as SocietyComboKey
+				,(N.RowNo + 1) 										as SocietyDisplaySortOrder
+				,json_extract(S.socs_list,concat('$[',N.RowNo,']')) as SocietyIdOrName
+		from 	cteSocs 	S 
+		join 	numbers 	N 	on json_length(S.socs_list) > N.RowNo
+		where 	N.RowNo between 0 and (	select 	max(json_length(socs_list)) - 1 
+										from 	cteSocs
+									  )
 		union all
 		-- Empty JSON list (for shows with no societies) has len 0 so fails 
 		-- the len > RowNo join condition above. It's a very special case so
 		-- just manually re-add it like this:
 		select	'[]', 1, 1, null
-		) 
-	SELECT 
-		`cte`.`SocietyComboValueRaw` AS `SocietyComboValueRaw`,
-		`cte`.`SocietyComboKey` AS `SocietyComboKey`,
-		`cte`.`SocietyDisplaySortOrder` AS `SocietyDisplaySortOrder`,
-		(CASE
-			WHEN (JSON_TYPE(`cte`.`SocietyIdOrName`) = 'INTEGER') THEN `cte`.`SocietyIdOrName`
-		END) AS `SocietyId`,
-		(CASE
-			WHEN (JSON_TYPE(`cte`.`SocietyIdOrName`) = 'STRING') THEN JSON_UNQUOTE(`cte`.`SocietyIdOrName`)
-		END) AS `SocietyNameRaw`
-	FROM
-		`cte`;
+	) 
+	select		SocietyComboValueRaw 		as SocietyComboValueRaw
+				,SocietyComboKey 			as SocietyComboKey
+				,SocietyDisplaySortOrder 	as SocietyDisplaySortOrder
+				,case
+					when json_type(SocietyIdOrName) = 'INTEGER'
+					then SocietyIdOrName
+				end							as SocietyId
+				,case
+					when json_type(SocietyIdOrName) = 'STRING'
+                    then json_unquote(SocietyIdOrName)
+				end 						as SocietyNameRaw
+	from	cte
+	;
 
 drop view if exists `extractv_dim_society_free`;
 CREATE VIEW `extractv_dim_society_free` AS 

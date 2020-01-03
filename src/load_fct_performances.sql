@@ -3,21 +3,25 @@ drop procedure if exists load_fct_performances;
 delimiter @
 create procedure load_fct_performances()
 begin
-   
-    
-    -- TODO thought, should I have some "final views" that abstract the precise
-    -- location of the joining (natural) PK and the surrogate PK for each dimension? 
-    -- One view per dim only. 
-    -- Then these updates below would always consistently join to the corresponding view
-    -- Because in some cases the actual target is the final dim table (dim_venue)
-    -- And others it's the extract table. And in some cases some logic (CTE distinct) is needed.
-    -- A view layer for this seems appropriate. 
-    
+      
     /*
     This is a series of in-place updates to the extract fact table,
     to apply the dimension keys and calculate facts. 
     Ended with a data movement from the extract to final table.
     */
+    
+    -- Wipe any pre-existing values, in case this step is being run manually
+    update 		extract_fct_performances
+    set 		PerformanceTimeKey = null
+				,VenueKey = null
+                ,SocietyComboKey = null
+                ,StoryKey = null
+                ,CountOfCast = null
+                ,CountOfCrew = null
+                ,CountOfBand = null
+                ,MinTicketPrice_GBP = null
+				,MaxTicketPrice_GBP = null
+	;
     
     /*** Clean and look up TimeKey ***/
     
@@ -31,7 +35,6 @@ begin
 	update 		extract_fct_performances		FA
     inner join 	dim_time						T	on FA.PerformanceTime = T.TimeValue
     set 		FA.PerformanceTimeKey = T.TimeKey
-    where 		FA.PerformanceTimeKey is null
     ;
     
     -- Then remaining rounded matches (ugly join, but very few rows)
@@ -44,14 +47,14 @@ begin
     /*** VenueKey ***/
     
     -- For "real" venues
-    update 		extract_fct_performances		FA
+    update 		extract_fct_performances	FA
     inner join 	dim_venue					V	on FA.VenueId = V.VenueId
     set 		FA.VenueKey = V.VenueKey
-    where 		FA.VenueKey is null
     ;
     
-    -- For freetext venues
-    update 		extract_fct_performances		FA
+    -- For freetext venues 
+    -- (strictly, any remaining unmatched...this assumes referential integrity)
+    update 		extract_fct_performances	FA
     inner join 	dim_venue					V	on -1 = V.VenueId	-- -1 = Freetext venue
     set 		FA.VenueKey = V.VenueKey
     where 		FA.VenueKey is null
@@ -59,7 +62,7 @@ begin
     
     /*** SocietyComboKey ***/
     
-    -- Need to use the extract table for this, and ensure distinctness
+    -- Need to ensure distinctness on the extract table
     with society_combo as (
 		select 	distinct
 				SocietyComboValueRaw
@@ -67,20 +70,18 @@ begin
 		from 	extract_dim_society_combo
     )
     update 		extract_fct_performances		FA
-    inner join 	society_combo							S	on FA.SocietyComboValueRaw = S.SocietyComboValueRaw
+    inner join 	society_combo					S	on FA.SocietyComboValueRaw = S.SocietyComboValueRaw
     set 		FA.SocietyComboKey = S.SocietyComboKey
-    where 		FA.SocietyComboKey is null
     ;
     
     /*** Look up StoryKey ***/
     -- This is slow, about 15s; I don't know if there's anything that 
     -- can be done in mysql to improve that (problem is nested-loop join on two big tables).
     update 		extract_fct_performances		FA
-    inner join 	extract_dim_story			E	on FA.StoryNameRaw = E.StoryNameRaw
-															and coalesce(FA.StoryAuthorRaw,'') = coalesce(E.StoryAuthorRaw,'')
-                                                            and FA.StoryType = E.StoryTypeRaw
+    inner join 	extract_dim_story				E	on FA.StoryNameRaw = E.StoryNameRaw
+													and coalesce(FA.StoryAuthorRaw,'') = coalesce(E.StoryAuthorRaw,'')
+													and FA.StoryType = E.StoryTypeRaw
     set 		FA.StoryKey = E.StoryKey
-    where 		FA.StoryKey is null
     ;
     
     
@@ -103,24 +104,38 @@ begin
     */
     
     
-    /*** Calculate role counts ***/
-		-- Via CTE joins aggregating extract_fct_roles
+    /*** Calculate participant counts ***/
+		-- This will leave nulls for shows which have no cast, crew, or band
+        -- listed at all; those will receive a default 0 in the final fact table.
+        
+	with cte as (
+		select 	ShowId
+				,count(distinct case ParticipantType when 'cast' then ParticipantId end) as CountOfCast
+				,count(distinct case ParticipantType when 'prod' then ParticipantId end) as CountOfCrew
+				,count(distinct case ParticipantType when 'band' then ParticipantId end) as CountOfBand
+		from 	camdram_dw.extract_fct_roles
+		group by ShowId
+    )
+	update 		extract_fct_performances	FA
+    inner join 	cte							C	on FA.ShowId = C.ShowId
+    set			FA.CountOfCast = C.CountOfCast
+				,FA.CountOfCrew = C.CountOfCrew
+                ,FA.CountOfBand = C.CountOfBand
+    ;
+   
     
-    
-    -- Finally, trunc and reload the final fact table
+    /*** Populate the final fact table ***/
     truncate table fct_performances;
     
     insert into fct_performances
     (
 		PerformanceDateKey
-        ,PerformanceUTCTimeKey
-        ,PerformanceLocalTimeKey
+        ,PerformanceTimeKey
         ,VenueKey
         ,SocietyComboKey
         ,StoryKey
         ,ShowId
-        ,PeformanceUTCDateTimeStamp
-        ,PerformanceLocalDateTimeStamp
+        ,PeformanceDateTimeStamp
         ,MinTicketPrice_GBP
         ,MaxTicketPrice_GBP
         ,CountOfCast
@@ -128,24 +143,23 @@ begin
         ,CountOfBand
     )
     select		
-				DA.DateKey							as PerformanceDateKey
-				,PerformanceRangeUTCTimeKey
-                ,PerformanceRangeLocalTimeKey
+				DA.DateKey as PerformanceDateKey
+				,FA.PerformanceTimeKey
                 ,FA.VenueKey
                 ,FA.SocietyComboKey
                 ,FA.StoryKey
                 ,FA.ShowId
-                ,null		as PerformanceUTCDateTimeStamp		-- needs calc
-                ,null		as PerformanceLocalDateTimeStamp	-- needs calc
+                ,addtime(convert(DA.DateValue, datetime), FA.PerformanceTime) as PerformanceDateTimeStamp
                 ,FA.MinTicketPrice_GBP
                 ,FA.MaxTicketPrice_GBP
-                ,FA.CountOfCastRoles
-				,FA.CountOfCrewRoles
-				,FA.CountOfBandRoles
+                ,FA.CountOfCast
+				,FA.CountOfCrew
+				,FA.CountOfBand
     
-    from 		extract_fct_performances		FA
-    inner join 	dim_date						DA	on DA.DateValue between FA.PerformanceRangeStartDate
-																			and 	FA.PerformanceRangeEndDate
+    from 		extract_fct_performances	FA
+    -- Breed rows so we have a row per performance, not per performance-range:
+    inner join 	dim_date					DA	on DA.DateValue between FA.PerformanceRangeStartDate
+																and 	FA.PerformanceRangeEndDate
     ;
 
 end @
