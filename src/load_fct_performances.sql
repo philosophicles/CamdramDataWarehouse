@@ -93,7 +93,7 @@ begin
     
     /*** Calculate participant counts ***/
 		-- This will leave nulls for shows which have no cast, crew, or band
-        -- listed at all; those will receive a default 0 in the final fact table.
+        -- listed at all; we can default those to 0 later.
         
 	with cte as (
 		select 		ShowId
@@ -113,8 +113,7 @@ begin
     
     /*** Populate the final fact table ***/
     truncate table fct_performances;
-    
-    -- Todo datestamp column problem?
+
     insert into fct_performances
     (
 		PerformanceDateKey
@@ -123,7 +122,7 @@ begin
         ,SocietyComboKey
         ,StoryKey
         ,ShowId
-        ,PeformanceDateTimeStamp
+        ,PerformanceDateTimeStamp
         ,MinTicketPrice_GBP
         ,MaxTicketPrice_GBP
         ,CountOfCast
@@ -140,9 +139,9 @@ begin
                 ,addtime(convert(DA.DateValue, datetime), FA.PerformanceTime) as PerformanceDateTimeStamp
                 ,FA.MinTicketPrice_GBP
                 ,FA.MaxTicketPrice_GBP
-                ,FA.CountOfCast
-				,FA.CountOfCrew
-				,FA.CountOfBand
+                ,coalesce(FA.CountOfCast,0)			as CountOfCast
+				,coalesce(FA.CountOfCrew,0)			as CountOfCrew
+				,coalesce(FA.CountOfBand,0)			as CountOfBand
     
     from 		extract_fct_performances	FA
     -- Breed rows so we have a row per performance, not per performance-range:

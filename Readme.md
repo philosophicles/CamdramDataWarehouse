@@ -40,13 +40,13 @@ Replace `camdram_dw` with the schema in which everything was installed.
 
 This will do a full reload, calling in turn a number of stored procedures that:
 
-1. Extract a copy of _relevant_ data from the production camdram schema, into the camdram_dw schema (expected <5 seconds)
-2. Process the data warehouse dimensions: society, venue, etc (expected ~10 seconds)
-3. Process the facts: performances, etc.
+1. Extract a copy of _relevant_ data from the production camdram schema, into the camdram_dw schema
+2. Process the data warehouse dimensions: society, venue, etc
+3. Process the facts: currently, just performances (more might be added in the future)
 
 Pre-existing data in the camdram_dw schema is completely removed / overwritten each time a reload takes place.
 
-The reload process may take a couple of minutes.
+The total reload process takes 1-2 minutes on the mid-grade hardware it was developed on.
 
 ## Output data
 

@@ -17,7 +17,8 @@ create view extractv_dim_society_combo as
 	with cteSocs as (
 		select	distinct 
 				-- Fix a DQ problem with "null" in the JSON list (also fixed in prod - 2 shows)
-				replace(replace(socs_list, ',null', ''), '[null]', '[]')	as socs_list
+                -- Also force CS collation otherwise "TBD" and "tbd" are the same for distincting purposes
+				replace(replace(socs_list, ',null', ''), '[null]', '[]') collate utf8mb4_0900_as_cs	as socs_list
         from 	camdram_prod.acts_shows
         where 	authorised = 1
     )
@@ -134,7 +135,13 @@ CREATE VIEW `extractv_dim_venue_official` AS
 drop view if exists extractv_fct_performances;
 create view extractv_fct_performances as
 	select 		
-				/* 	Avoid a weird DQ problem affecting a very few rows.
+				/*  Very occasionally, shows duplicate a performance range 
+					leading to exact duplicate rows here. We can distinct 
+                    these away - not losing any useful information.
+                */
+				distinct
+                
+                /* 	Avoid a weird DQ problem affecting a very few rows.
 					These will also be fixed in prod data, but this helps
 					avoid errors, in case it happens again.
 				*/
@@ -172,7 +179,10 @@ create view extractv_fct_performances as
 				
 				,PF.venue_id										as VenueId
 				,case when PF.venue_id is null then PF.venue end as VenueNameRaw
-				,SW.socs_list									as SocietyComboValueRaw
+                
+                -- Repeat the same processing as socs_list in extractv_dim_society_combo
+                ,replace(replace(SW.socs_list, ',null', ''), '[null]', '[]') 
+					collate utf8mb4_0900_as_cs					as SocietyComboValueRaw
 				
 				,SW.title										as StoryNameRaw
 				,SW.author										as StoryAuthorRaw

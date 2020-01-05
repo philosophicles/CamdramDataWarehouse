@@ -1,41 +1,11 @@
--- CREATE SCHEMA `camdram_prod DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ;
+-- CREATE SCHEMA `camdram_prod` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ;
 
 -- CREATE SCHEMA `camdram_dw` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs ;
 
 
-/* Order to run stuff in so far
+/* 
 
-*** SETUP - RUN ONCE TO INITIALIZE DB ***
-
-1. CREATE SCHEMA `camdram_dw` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs ;
-		* Case Sensitive collation is potentially important... 
-2. call setup_numbers();				-- No dependencies
-3. call setup_extract_tables();		-- No dependencies
-4. call setup_extract_views();		-- Depends on numbers
-5. setup_final_tables
-5. call setup_dim_date();				-- Depends on numbers and some views
-6. call setup_dim_time();				-- Depends on numbers
-
-At this point there's a bunch of defined objects but no actual data
-
-*** REGULAR RELOAD PROCESS ***
-
-1. call run_extract_dims();		-- Populates the extract_dim tables, 0.3s. Hits the prod database.
-2. call run_extract_facts();	-- Populates extract_fct tables, 1s. Hits the prod database.
-
-	-- Rest is all isolated within the camdram_dw database
-    
-3. Run dimensions: these should be able to be run in any order, independently
-	(and perhaps we'd refresh on different timescales)
-	* Venue
-    * Society (incl. society combo table - must reload at same time)
-    * Story
-    
-4. Run facts: depends on dimensions being up to date first
-	(not aiming to handle late-arriving dimensions for now). 
-    * Performances
-    
-    ...
+call run_all();
 
 */
 
@@ -630,6 +600,26 @@ where regexp_like(PriceRaw, 'donation', 'i')
 order by PriceRaw
 ;
 
-select *
+select SocietyComboValueRaw, SocietyComboKey, ShowId
 from extract_fct_performances
+where SocietyComboKey is null
+;
+
+select *
+from extract_dim_society_combo
+where SocietyComboValueRaw like '%Trinity College Music Society%'
+;
+
+
+select *
+from 	extract_fct_performances
+where 	PerformanceTimeKey = 238
+and		VenueKey = 3
+and 	ShowId = 4277
+-- and		PerformanceDateKey = 36729
+;
+
+
+select *
+from fct_performances
 ;
