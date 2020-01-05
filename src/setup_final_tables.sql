@@ -47,8 +47,8 @@ create table fct_performances(
 	,StoryKey						smallint unsigned not null
 	,ShowId							smallint unsigned not null
 	,PerformanceDateTimeStamp		datetime not null
-	,MinTicketPrice_GBP				decimal(5,2)
-	,MaxTicketPrice_GBP				decimal(5,2)
+	,MinTicketPrice_GBP				decimal(9,2)
+	,MaxTicketPrice_GBP				decimal(9,2)
 	,CountOfCast					tinyint unsigned not null default 0
 	,CountOfCrew					tinyint unsigned not null default 0
 	,CountOfBand					tinyint unsigned not null default 0

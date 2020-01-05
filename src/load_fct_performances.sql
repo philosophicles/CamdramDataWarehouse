@@ -75,8 +75,9 @@ begin
     ;
     
     /*** Look up StoryKey ***/
-    -- This is slow, about 15s; I don't know if there's anything that 
+    -- This is slow, about 35s; I don't know if there's anything that 
     -- can be done in mysql to improve that (problem is nested-loop join on two big tables).
+    -- Could manually batch by StoryType if needed?
     update 		extract_fct_performances		FA
     inner join 	extract_dim_story				E	on FA.StoryNameRaw = E.StoryNameRaw
 													and coalesce(FA.StoryAuthorRaw,'') = coalesce(E.StoryAuthorRaw,'')
@@ -87,21 +88,8 @@ begin
     
     /*** Calculate min and max ticket prices ***/
     
-    -- Does this need a sub procedure? I think a number of steps. 
-    -- Maybe take distinct non-null values into a working table, apply logic there
-    -- and bring it back. 
-    /*
-    Logic ideas: 
-		* "free" and common variations on that --> 0 / 0
-        * otherwise only take values involving at least one [0-9]
-        * Do some pattern matching to explode to more rows per root value
-        * £ character followed by numbers up until either another £, or a /, or a space, or...what esle?
-			* Do some frequency analysis, what else exists?
-		* Once I have many rows, strip the punctuation etc out, then do windowed min and max per raw value
-        * Then I can tie that back to facts
-        
-	These should remain as null unless we KNOW it's £0 (free)
-    */
+    
+    -- call calc_price();
     
     
     /*** Calculate participant counts ***/
@@ -109,12 +97,12 @@ begin
         -- listed at all; those will receive a default 0 in the final fact table.
         
 	with cte as (
-		select 	ShowId
-				,count(distinct case ParticipantType when 'cast' then ParticipantId end) as CountOfCast
-				,count(distinct case ParticipantType when 'prod' then ParticipantId end) as CountOfCrew
-				,count(distinct case ParticipantType when 'band' then ParticipantId end) as CountOfBand
-		from 	camdram_dw.extract_fct_roles
-		group by ShowId
+		select 		ShowId
+					,count(distinct case ParticipantType when 'cast' then ParticipantId end) as CountOfCast
+					,count(distinct case ParticipantType when 'prod' then ParticipantId end) as CountOfCrew
+					,count(distinct case ParticipantType when 'band' then ParticipantId end) as CountOfBand
+		from 		extract_fct_roles
+		group by 	ShowId
     )
 	update 		extract_fct_performances	FA
     inner join 	cte							C	on FA.ShowId = C.ShowId

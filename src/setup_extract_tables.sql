@@ -80,8 +80,8 @@ create table extract_fct_performances(
 	,ShowId							smallint unsigned
 	
 	,PriceRaw						varchar(200)
-	,MinTicketPrice_GBP				decimal(5,2)
-	,MaxTicketPrice_GBP				decimal(5,2)
+	,MinTicketPrice_GBP				decimal(9,2)
+	,MaxTicketPrice_GBP				decimal(9,2)
 	,CountOfCast					tinyint unsigned
 	,CountOfCrew					tinyint unsigned
 	,CountOfBand					tinyint unsigned

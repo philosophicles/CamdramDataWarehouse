@@ -180,7 +180,7 @@ create view extractv_fct_performances as
 				
 				,SW.id											as ddShowId
 				
-				,SW.prices										as PriceRaw
+				,nullif(SW.prices,'')							as PriceRaw
 				
 	from 		camdram_prod.acts_performances		PF
 	inner join 	camdram_prod.acts_shows				SW	on PF.sid = SW.id
