@@ -114,6 +114,7 @@ begin
     /*** Populate the final fact table ***/
     truncate table fct_performances;
     
+    -- Todo datestamp column problem?
     insert into fct_performances
     (
 		PerformanceDateKey

@@ -12,6 +12,7 @@
 2. call setup_numbers();				-- No dependencies
 3. call setup_extract_tables();		-- No dependencies
 4. call setup_extract_views();		-- Depends on numbers
+5. setup_final_tables
 5. call setup_dim_date();				-- Depends on numbers and some views
 6. call setup_dim_time();				-- Depends on numbers
 
@@ -588,11 +589,47 @@ where StoryNameRaw = 'SALOME'
 		;
 
 
+select *
+from 		extract_dim_society_combo
+where SocietyComboKey in (450,550)
+;
 
-select 	ShowId
-		,ParticipantType
-        ,
-from 	camdram_dw.extract_fct_roles
+select 	id, socs_list, replace(replace(socs_list, ',null', ''), '[null]', '[]')
+from 	camdram_prod.acts_shows
+where socs_list in ('[16,null]','[null]')
 ;
 
 
+select distinct ParticipantType
+from 	camdram_dw.extract_fct_roles
+;
+
+-- 
+select 	ShowId
+        ,count(distinct case ParticipantType when 'cast' then ParticipantId end) as CountOfCast
+        ,count(distinct case ParticipantType when 'prod' then ParticipantId end) as CountOfCrew
+        ,count(distinct case ParticipantType when 'band' then ParticipantId end) as CountOfBand
+from 	camdram_dw.extract_fct_roles
+group by ShowId
+;
+
+
+select *
+from extract_fct_performances
+where CountOfBand is null
+or CountOfCrew is null
+or CountOfCast is null
+;	-- will fix via default on the final fact table
+
+-- TODO next the price logic
+-- 666 unique variations to consider - not too bad
+select 	distinct 
+		PriceRaw
+from 	extract_fct_performances
+where regexp_like(PriceRaw, 'donation', 'i')
+order by PriceRaw
+;
+
+select *
+from extract_fct_performances
+;
