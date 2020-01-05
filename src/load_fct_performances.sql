@@ -87,9 +87,8 @@ begin
     
     
     /*** Calculate min and max ticket prices ***/
-    
-    
-    -- call calc_price();
+    -- Sub-procedure because it's fairly complex (and might get more so over time)
+    call calc_price();
     
     
     /*** Calculate participant counts ***/
