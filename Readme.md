@@ -38,6 +38,12 @@ From a shell prompt in the top-level directory:
 
 Replace `camdram_dw` with the schema in which everything was installed.
 
+Alternatively:
+
+    $ mysql -u SomeUser -p -e "call run_all();" camdram_dw
+
+Not yet sure if we need the reload.sql - perhaps not.
+
 This will do a full reload, calling in turn a number of stored procedures that:
 
 1. Extract a copy of _relevant_ data from the production camdram schema, into the camdram_dw schema
