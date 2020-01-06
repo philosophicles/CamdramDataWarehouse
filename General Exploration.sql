@@ -3,21 +3,13 @@
 -- CREATE SCHEMA `camdram_dw` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs ;
 
 
-/* 
-
-call run_all();
-
-*/
-
-
-
 SELECT * FROM camdram_prod.acts_performances
 order by start_at asc
 ;
 
 SELECT * FROM camdram_prod.acts_shows;
 
-SELECT * 
+SELECT *
 FROM camdram_prod.acts_people_data
  where id = 10
 ;
@@ -28,13 +20,13 @@ SELECT * FROM camdram_prod.acts_access;
 SELECT * FROM camdram_prod.acts_users
 order by id desc;
 
-select * 
+select *
 from camdram_prod.acts_societies
 where 	type=0
 ;
 
 
-SELECT min(start_at), max(repeat_until) 
+SELECT min(start_at), max(repeat_until)
 FROM camdram_prod.acts_performances
 where sid is not null
 ;
@@ -51,7 +43,7 @@ from 	camdram_prod.acts_performances
 
 
 
-select 	distinct 
+select 	distinct
         category
 from 	camdram_prod.acts_shows
 ;
@@ -72,11 +64,11 @@ select * from camdram_prod.acts_performances where sid = 4429;
 -- 2 musical - should all be gone now -- correct
 -- 3 opera - shouldn't be any more 3s now -- correct
 -- 4 maps to drama in front end but is that right, only three 4s...they are all dance
-	-- there should be no 4s left in an updated database dump - correct they have gone. 
--- 5 should also be gone -- correct. 
+	-- there should be no 4s left in an updated database dump - correct they have gone.
+-- 5 should also be gone -- correct.
 
 
-select 		distinct 
+select 		distinct
 			email
 			,locate('@', email) as AtSignIndex
             ,right(email, length(email)-locate('@', email)) as EmailDomain
@@ -85,7 +77,7 @@ from 		camdram_prod.acts_users
 
 select 		distinct
 			right(email, length(email)-locate('@', email)) as EmailDomain
-            ,case 
+            ,case
 				when email like '%cam.ac.uk' then 'cam.ac.uk'
                 when email like '%@cantab.net' then 'cantab.net'
                 else 'other'
@@ -96,7 +88,7 @@ from 		camdram_prod.acts_users
 ;
 
 
-select * 
+select *
 from camdram_prod.acts_societies
 where 	type=0
 ;
@@ -166,9 +158,9 @@ select * from camdram_prod.acts_shows;
 select * from camdram_prod.acts_shows
 where id in (10,2081,3899);
 
-SELECT * 
+SELECT *
 FROM camdram_prod.acts_performances
-where sid is  null 
+where sid is  null
 -- and cast(start_at as char(20)) = '0000-00-00 00:00:00'
 ;
 
@@ -179,27 +171,27 @@ and cast(start_at as char(20)) != '0000-00-00 00:00:00'
 ;
 
 -- Most of this is now in the extractv_fct_performances, except the breeding rows with date dim
-select 		
+select
             DA.DateValue
 			,cast(PF.start_at as time)						as PerformanceTimeValue_GMT
             ,timestamp(DA.DateValue, cast(PF.start_at as time))	as PerformanceTimestamp_GMT
-            
+
             ,PF.venid										as VenueId
             ,case when PF.venid is null then PF.venue end	as VenueNameRaw
             ,SW.socs_list									as SocietyComboValueRaw
-            
+
             ,SW.title										as StoryNameRaw
             ,SW.author										as StoryAuthorRaw
             ,SW.category									as StoryType
-            
+
             ,SW.id											as ddShowId
-            
+
             ,SW.prices										as PriceRaw
-            
+
 from 		camdram_prod.acts_performances		PF
 inner join 	camdram_prod.acts_shows				SW	on PF.sid = SW.id
 -- Need to get the right rowset:
-left join 	camdram_dw.dim_date					DA	on DA.DateValue between cast(PF.start_at as date) 
+left join 	camdram_dw.dim_date					DA	on DA.DateValue between cast(PF.start_at as date)
 																		and PF.repeat_until
 													-- This relates to some weird bad data (3 rows) when Stuart first built this
                                                     -- Manually fixed and hopefully will never happen again. The start-at values
@@ -260,7 +252,7 @@ select distinct authorised
 from camdram_prod.acts_shows;
 
 -- Diversion - can I get created by user?
-SELECT * 
+SELECT *
 FROM camdram_prod.acts_access
 where type = 'show'
 -- and entity_id = 1216
@@ -278,11 +270,11 @@ group by entity_id
 order by count(1) desc
 ;
 
-select * 
+select *
 from camdram_prod.acts_shows
 where id = 5025;
 
-select * 
+select *
 from camdram_prod.acts_access
 where type = 'show'
 and entity_id = 5025
@@ -290,7 +282,7 @@ order by created_at desc
 ;
 
 select * from camdram_prod.acts_users where id = 2743;
--- A: not easily. Probably, but let's not worry for now. 
+-- A: not easily. Probably, but let's not worry for now.
 
 
 
@@ -298,16 +290,16 @@ select * from camdram_prod.acts_users where id = 2743;
 /*
 	Now I have a complete working extract of data in camdram_dw.
     Next steps:
-		1. Process dims into a final form: until this is done, with a suitable Surrogate Key, 
+		1. Process dims into a final form: until this is done, with a suitable Surrogate Key,
 			I can't put that Surrogate Key on the facts.
-            AS OF DEC 2019, I have society, venue, and story done. 
-		2. Process facts into a final, surrogates-only, form. 
-			This could either be a straight insert select where the query 
+            AS OF DEC 2019, I have society, venue, and story done.
+		2. Process facts into a final, surrogates-only, form.
+			This could either be a straight insert select where the query
             does a bunch of joins to dimensional lookups.
-            Or I could add more columns to the extract_fct tables, and then run 
+            Or I could add more columns to the extract_fct tables, and then run
             update scripts to fill them in one by one. Then do a much simpler insert
             from this table only, picking just the necessary columns.
-		3. Tidy; possibly should leave the extract tables empty at the end? 
+		3. Tidy; possibly should leave the extract tables empty at the end?
         4. Output: figure out how I'm going to write the final cleaned and processed
 			facts and dims to CSV, and where, for onward analysis.
 */
@@ -315,42 +307,42 @@ select * from camdram_prod.acts_users where id = 2743;
 -- For dims, I think I'm going to need extra columns in the extract tables
 -- to do inplace updates. Think it'll be way too complex to do, in at least some cases,
 -- as a single insert select with joins.
--- E.g. story, venue, society, need cleaning that considers across many rows. 
+-- E.g. story, venue, society, need cleaning that considers across many rows.
 -- The final surrogate keys probably need to be decided via updates too - using row_no, dense_rank etc as necessary
 -- Or maybe views on the extract tables...? That would have the row_no function etc in the view?
--- Either way, not an auto_increment field in the final table, because I don't want raw attribute cols 
+-- Either way, not an auto_increment field in the final table, because I don't want raw attribute cols
 -- in there, but I need the raw attribute cols to do the lookup on the fact.
--- ACTUALLY, maybe I DO want the raw versions in the final dimension... 
+-- ACTUALLY, maybe I DO want the raw versions in the final dimension...
 -- perhaps that's interesting. Perhaps sometimes people will want to look at values "as entered into Camdram"
--- and othertimes as harmonized or normalized values. 
--- The latter does imply more rows though. 
+-- and othertimes as harmonized or normalized values.
+-- The latter does imply more rows though.
 
 -- More thinking another day:
 /*
 Let's make an axiom: whilst we might USE this dataset to drive and identify cleaning,
-all cleanign will happen in the prod database. This DW should just reflect the prod DB. 
+all cleanign will happen in the prod database. This DW should just reflect the prod DB.
 That's where the value really lies. So I'm not going to have any processes that do clever matching of
-differently-spelt versions of same venue, etc, and feed it into this DW dimension build process. 
-We'd feed it into prod updates and then the data will be better in reload. 
+differently-spelt versions of same venue, etc, and feed it into this DW dimension build process.
+We'd feed it into prod updates and then the data will be better in reload.
 So venue_free and society_free are potentially still useful but NOT IN THE WAY I INITIALLY ENVISAGED.
 
-If that axiom holds, then we don't need to worry about lookup of keys against dims. Whatever is in the final 
-dim table is what we'll need to lookup. So the dims can be built with auto_increment keys. 
+If that axiom holds, then we don't need to worry about lookup of keys against dims. Whatever is in the final
+dim table is what we'll need to lookup. So the dims can be built with auto_increment keys.
 
 
 For now, first, I want final dim tables, with the right set of columns and with an autoincrement key.
 Initial version of dim insert process will actually just insert the official ones plus some
 default rows. Then the fact lookup will lookup the official IDs and match anything with raw text
-values to the default. Simple and clean. 
+values to the default. Simple and clean.
 
-Later iterations of this code can improve on that if desired, of course. 
+Later iterations of this code can improve on that if desired, of course.
 */
 
 select *
 from 	extract_dim_story;
 
 
-select * 
+select *
 from extract_fct_performances
 order by PerformanceRangeStartDate desc;
 
@@ -376,10 +368,10 @@ order by StoryNameRaw asc
 
 -- Thinking that since the majority of analysis would be interested in
 -- just the standard venues (and socs) - pareto! - I probably don't need to worry
--- about this stuff too much. 
+-- about this stuff too much.
 -- Think it might be better to just map any raw venue names to "Other Venue" or something
--- for now and publish like that. Can always circule back and improve later. 
--- Better to get something out than not at all. 
+-- for now and publish like that. Can always circule back and improve later.
+-- Better to get something out than not at all.
 
 
 
@@ -403,10 +395,10 @@ order by PerformanceRangeStartDateTime
 ;
 -- These 10s don't appear to be consistently the same thing, based on old emails
 -- I think they're a glitch for things that were meant to be various free-text societies.
--- Now showing no society on Camdram front-end... 
+-- Now showing no society on Camdram front-end...
 -- Have mapped these to a different negative catchall. And fixed in live DB - should disappear next extract.
 	-- Fixed = resaved, which wipes the bad data. But in many cases I was able to fill in a real soc based on
-    -- description / context. Early ones mostly CADS, later ones other stuff. 
+    -- description / context. Early ones mostly CADS, later ones other stuff.
 
 select * from camdram_prod.acts_societies;
 
@@ -428,9 +420,9 @@ select count(1) from camdram_dw.dim_date;
 -- Convert from row per performance RUN to row per performance
 select 		DA.DateValue
             ,timestamp(DA.DateValue, PerformanceTime)	as PerformanceTimestamp
-            
+
 			,FA.*
-            
+
 from 		camdram_dw.extract_fct_performances		FA
 inner join 	camdram_dw.dim_date						DA	on DA.DateValue between FA.PerformanceRangeStartDate
 																		and 	FA.PerformanceRangeEndDate
@@ -453,11 +445,11 @@ or 			StoryKey is null
 ;
 
 
--- This works, both locally and on antigone. 
+-- This works, both locally and on antigone.
 select convert_tz('2019-07-01 18:45:00', '+00:00', 'Europe/London') as summerADCshow
 		,convert_tz('2019-12-01 19:45:00', '+00:00', 'Europe/London') as winterADCshow;
-        
--- BUT my explorations have taught me that mysql sucks at datetimes. 
+
+-- BUT my explorations have taught me that mysql sucks at datetimes.
 -- Are there going to be any problems caused by doing this "fix" at this point in the process?
 
 
@@ -498,7 +490,7 @@ select 		*
 from 		camdram_dw.extract_fct_performances		FA
 -- where 		SocietyComboKey is null
 ;
-select * 
+select *
 from camdram_dw.extract_dim_story
 where StoryTypeRaw = '' or StoryTypeRaw is null
 ;
@@ -574,7 +566,7 @@ select distinct ParticipantType
 from 	camdram_dw.extract_fct_roles
 ;
 
--- 
+--
 select 	ShowId
         ,count(distinct case ParticipantType when 'cast' then ParticipantId end) as CountOfCast
         ,count(distinct case ParticipantType when 'prod' then ParticipantId end) as CountOfCrew
@@ -593,7 +585,7 @@ or CountOfCast is null
 
 -- TODO next the price logic
 -- 666 unique variations to consider - not too bad
-select 	distinct 
+select 	distinct
 		PriceRaw
 from 	extract_fct_performances
 where regexp_like(PriceRaw, 'donation', 'i')
