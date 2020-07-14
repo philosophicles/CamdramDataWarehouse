@@ -1,3 +1,9 @@
 
+.venv
+.vscode
+
 # For development, output files go in here
 output/*
+
+# Config files - see readme
+src/config.jsonc

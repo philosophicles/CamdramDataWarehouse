@@ -1,0 +1,11 @@
+{
+    "mysql": {
+        "user": "wshax1564",    // You'll almost certainly need to change this
+        "host": "localhost",    // Change if connecting remotely
+        "db": "camdram_dw"      // Probably doesn't need changing
+    },
+    "output": {
+        "dir": "output",                      // Where to put the CSVs
+        "tables": ["camdram_performances"]    // Which tables/files to output
+    }
+}

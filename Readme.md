@@ -1,18 +1,20 @@
 # Camdram Data Warehouse
 
-A pure-SQL ETL (extract, transform, load) process to generate Camdram datasets that can be freely shared as delimited text files, and used for data analysis and visualisation.
+An (almost) pure-SQL ETL (extract, transform, load) process to generate Camdram datasets that can be freely shared as delimited text files, and used for data analysis and visualisation.
 
 ## Why?
 
 These datasets could, perhaps, be useful for generating new insight about the world of Cambridge student theatre, as well as about usage of Camdram itself. They might also be useful to reference while extending Camdram's functionality or the data held on the site.
 
-This ETL process does necessarily mutate the Camdram data in the interests of making it easier to understand and work with. Camdram has been through many codebase changes over the years, and this has resulted in variations in the underlying data that don't correlate to variation on the website. The spirit of this project is that changes to abstract away website implementation details and database variability are fine, as are changes to iron out isolated "weirdness" in the data due to historic bugs in the website codebase.
+By design, the data is mutated to make it easier to understand and work with, than the actual operational database used by the website itself. Camdram has been through many codebase changes over the years, and this has resulted in variations in the underlying data that don't correlate to variation on the website.
 
-It is not the goal of this project to fundamentally change the data beyond recognition, or to attempt to programmatically correct data quality errors stemming from how users entered data into the site.
+The spirit of this project is to abstract away website implementation details, gradual variations over time, and isolated data weirdness caused by bugs in the website software. This project is _not_ intended to fundamentally change the interpretation of the data from how it would look on the website, or correct data quality errors stemming from how users entered data.
+
+Another key goal is to ensure the output is anonymous, i.e. does not contain any data identifying individual people. This makes it possible to share the data legally, in accordance with the EU General Data Protection Regulation.
 
 ## Installation
 
-This should run on recent versions of either MariaDB or MySQL; anything that's not cross-compatible is a bug.
+This should run on recent versions of either MariaDB or MySQL; anything that's not cross-compatible between those two is a bug.
 
 It's designed to run against an existing copy of the Camdram website database on the same server (separate schema); you have to be able to make a copy of that for yourself.
 
@@ -46,31 +48,31 @@ This will do a full reload:
 
 Pre-existing data in the camdram_dw schema is completely removed / overwritten each time a reload takes place.
 
-The total reload process takes 1-2 minutes on the mid-grade hardware it was developed on.
+The total reload process takes 1-2 minutes on a mid-range consumer laptop.
+
+The idea is that this can be scheduled via `cron` or equivalent, though credential management will need addressing.
+
+## Manual validation of data out vs data in
+
+If you wish, run the whole of `validate_rowcounts.sql` to produce a summary of the rowcounts in the production schema vs the data warehouse results. Some common-sense interpretation of these is needed but it can be used to give a basic re-assurance that data isn't being lost. If numbers are 0 or vary wildly, something is probably wrong.
+
+Some automated validation tests could be built based on this...
 
 ## Create output files
 
-**This part is in need of some refinement!**
+This part is surprisingly hard to do from mysql, if the goal is standard CSV-format files. (Tab-separated files are easier but less useful for analysis tools.) We've resorted to a python-based approach for this final step, and as with the reload, the intention is for this to be automated.
 
-Fill in suitable connection details into `generate_output.sh` (don't commit them to source control!) and run it.
+Each output file relates to a single "fact type" (defined below) and should be in keeping with the notion of "tidy data" (see Google). Column names are in the first row, and should be easy to understand so long as one is familiar with how Camdram itself is used.
 
-A set of TSV (tab-separated values) files will be created in the `output` directory. Rerunning will overwrite them.
+### First-time / installation steps
 
-It might make sense to make this part of the existing reload process, rather than a separate step.
+* Install python 3+ and install dependencies with `pipenv install`.
+* Make config file: `cp src/config.jsonc.example src/config.jsonc` then edit accordingly
+* Use the `keyring` CLI (documented online) within the virtualenv to define the password for the configured mysql account
 
-## About the output files
+### Every time
 
-The design and relationships between data files is based on widely-used conventions in the data warehousing world. These files comprise what is often called a "star schema", "dimensional model", or "Kimball model" (after Ralph Kimball, who co-defined and popularised the practice).
-
-This design also closely aligns with what the data science community now calls "tidy data"; this is mostly different industries' terminology for the same thing.
-
-Files with a `fct` prefix and plural name are fact tables: lots of rows, few columns. Columns either contain _measurements_ (values that measure something tangible, and can be aggregated meaningfully via functions like `sum` or `average`) or integer "surrogate" keys referring to dimension tables.
-
-Files with a `dim` prefix and singular name are dimension tables: lots of columns, generally fewer rows. Dimensions describe and differentiate the fact measurements. Many fact rows will reference the same dimension row. Beyond the surrogate key that links the tables together, dimension attributes are mostly descriptive and can be used to group or filter the fact data.
-
-Column names are in the first row of the output files, and should be easy to understand so long as one is familiar with how Camdram itself is used.
-
-`Key` suffixes on columns imply a dimension surrogate key, the fields used to link facts to dimensions - the joins should be easy to figure out. Only one column from each table should be needed to join to each other table.
+`pipenv run python src/output_to_csv.py`
 
 ### Camdram concepts and definitions
 
@@ -89,13 +91,15 @@ For anyone exploring the data who isn't intimately familiar with how Camdram its
 * Show categories: Camdram allows the creator of show listings to choose a category, such as drama, comedy, or musical. This property is currently not used much or at all in the Camdram web user interface, and it is possible that some show listing creators do not set it correctly.
 
 
-### Fact tables
+### Fact types
 
 1. Performances
 
-This fact table contains a row for every discrete performance happening in a venue at a specific datetime, of a single production.
+A row for every discrete performance happening in a venue at a specific datetime, of a single production.
 
-_Other facts coming soon..._
+This is a powerful fact for analysing most angles of _what has happened_. It's not a good choice for most questions related to participation levels, though, because the same people tend to participate in many different performances (and aren't identified individually here).
+
+_Other facts coming soon, primarily to tackle participation..._
 
 ### Measure information
 
@@ -107,7 +111,7 @@ A lot of information here is contained in simple counted measures:
 * `count(distinct ShowId)` for number of shows
 * counts of dimension identifiers like `VenueId`, `SocietyId`, etc
 
-In this dataset, counting shouldn't be underestimated.
+In this dataset, the utility of just counting things shouldn't be underestimated.
 
 2. Min and Max ticket price
 
@@ -140,3 +144,17 @@ Because of that, these measures lend themselves better to average-based aggregat
 A separate fact table is planned, with greater granularity about show participation, to allow calculations that account for the same person being involved in many shows.
 
 Note, there are many shows for which no production credits are provided. These measures will show 0 in all such cases.
+
+## Understanding the data structures within the data warehouse process
+
+The design of the internal tables/views in this solution is based on widely-used conventions in the data warehousing world. These files comprise what is often called a "star schema" or "dimensional model".
+
+Tables with a `fct` prefix and plural name are facts: lots of rows, few columns. Columns either contain _measurements_ (values that measure something tangible, and can be aggregated meaningfully via functions like `sum` or `average`) or compact integer "surrogate" keys referring to dimension tables.
+
+Tables with a `dim` prefix and singular name are dimensions: lots of columns, generally fewer rows. Dimensions describe and differentiate the fact measurements. Many fact rows will reference the same dimension row. Beyond the surrogate key that links the tables together, dimension attributes are mostly descriptive and can be used to group or filter the fact data.
+
+`Key` suffixes on columns imply a dimension surrogate key, the fields used to link facts to dimensions - the joins should be easy to figure out. Only one column from each table should be needed to join to each other table (no compound keys).
+
+This kind of design is called a star schema because a single fact table links directly to a number of dimension tables, that are commonly drawn in diagrams surrounding the central fact table like points of a star. If the denormalization of data values in the dimensions makes you uncomfortable: remember that this data is only ever being recreated in bulk, never row-by-row. Minimizing join "hops" makes data processing and analysis easier; keeping the separation between "row-heavy" facts and "column-heavy" dimensions keeps performance and storage requirements tolerable.
+
+We ultimately fully flatten the data to a single CSV file for sharing, because some data analysis tools cannot perform joins between different table/frame objects. We could additionally output the final dimensional tables (fct_ and dim_) for analytic cases where that was preferred.
